@@ -1,6 +1,5 @@
 import os
-import re
-from telegram import Update, InputMediaAudio
+from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 # ================= CONFIG =================
@@ -124,7 +123,7 @@ async def playher(update, context):
     if not playing:
         await play_next(update, context)
 
-# ---------- PLAY ALL SONGS (10 PER GROUP) ----------
+# ---------- PLAY ALL SONGS (ONE BY ONE) ----------
 
 async def playallher(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_allowed(update):
@@ -136,27 +135,23 @@ async def playallher(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("No songs available.")
         return
 
-    await update.message.reply_text(f"🎶 Sending {len(songs)} songs...")
-
-    media_batch = []
+    await update.message.reply_text(f"🎶 Sending {len(songs)} songs one by one...")
 
     for song in songs:
         file_path = os.path.join(HER_SONGS_DIR, song)
 
-        media_batch.append(
-            InputMediaAudio(
-                media=file_path,
-                title=song.rsplit(".", 1)[0],
-                performer="Her Songs"
-            )
-        )
+        if not os.path.isfile(file_path):
+            continue
 
-        if len(media_batch) == 10:
-            await update.message.reply_media_group(media_batch)
-            media_batch = []
-
-    if media_batch:
-        await update.message.reply_media_group(media_batch)
+        try:
+            with open(file_path, "rb") as audio:
+                await update.message.reply_audio(
+                    audio,
+                    title=song.rsplit(".", 1)[0],
+                    performer="Her Songs"
+                )
+        except Exception as e:
+            await update.message.reply_text(f"⚠️ Error sending {song}: {e}")
 
 # ---------- CONTROLS ----------
 
