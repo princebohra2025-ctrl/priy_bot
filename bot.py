@@ -1,14 +1,12 @@
 import os
-import re
 from telegram import Update, InputMediaAudio
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 # ================= CONFIG =================
 
 TOKEN = os.getenv("BOT_TOKEN")
-
 if not TOKEN:
-    raise RuntimeError("❌ BOT_TOKEN not set in Railway Variables")
+    raise RuntimeError("BOT_TOKEN not set in Railway Variables")
 
 ALLOWED_USER_ID = os.getenv("ALLOWED_USER_ID")
 ALLOWED_GROUP_ID = os.getenv("ALLOWED_GROUP_ID")
@@ -50,7 +48,7 @@ async def play_next(update, context):
                     performer=song["artist"]
                 )
         except Exception as e:
-            await update.message.reply_text(f"⚠️ Error playing song: {e}")
+            await update.message.reply_text(f"Error playing song: {e}")
 
     playing = False
 
@@ -75,12 +73,13 @@ async def hersongs(update, context):
         return
 
     songs = sorted(os.listdir(HER_SONGS_DIR))
+    songs = [s for s in songs if s.lower().endswith((".mp3", ".wav", ".m4a"))]
 
     if not songs:
-        await update.message.reply_text("No local songs found.")
+        await update.message.reply_text("No songs found.")
         return
 
-    msg = "🎤 Her Songs:\n\n"
+    msg = "🎵 Her Songs:\n\n"
     for i, s in enumerate(songs):
         msg += f"{i+1}. {s.rsplit('.', 1)[0]}\n"
 
@@ -95,6 +94,7 @@ async def playher(update, context):
         return
 
     songs = sorted(os.listdir(HER_SONGS_DIR))
+    songs = [s for s in songs if s.lower().endswith((".mp3", ".wav", ".m4a"))]
 
     if not songs:
         await update.message.reply_text("No songs available.")
@@ -119,7 +119,7 @@ async def playher(update, context):
         "artist": "Her Songs"
     })
 
-    await update.message.reply_text("✅ Added to queue")
+    await update.message.reply_text("Added to queue")
 
     if not playing:
         await play_next(update, context)
@@ -131,19 +131,23 @@ async def playallher(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     songs = sorted(os.listdir(HER_SONGS_DIR))
+    songs = [s for s in songs if s.lower().endswith((".mp3", ".wav", ".m4a"))]
 
     if not songs:
         await update.message.reply_text("No songs available.")
         return
 
-    await update.message.reply_text(f"🎶 Sending {len(songs)} songs...")
+    await update.message.reply_text(f"Sending {len(songs)} songs...")
 
-    media_batch = []
+    batch = []
 
     for song in songs:
         file_path = os.path.join(HER_SONGS_DIR, song)
 
-        media_batch.append(
+        if not os.path.isfile(file_path):
+            continue
+
+        batch.append(
             InputMediaAudio(
                 media=file_path,
                 title=song.rsplit(".", 1)[0],
@@ -151,12 +155,12 @@ async def playallher(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         )
 
-        if len(media_batch) == 10:
-            await update.message.reply_media_group(media_batch)
-            media_batch = []
+        if len(batch) == 10:
+            await update.message.reply_media_group(batch)
+            batch = []
 
-    if media_batch:
-        await update.message.reply_media_group(media_batch)
+    if batch:
+        await update.message.reply_media_group(batch)
 
 # ---------- CONTROLS ----------
 
@@ -164,13 +168,13 @@ async def pause(update, context):
     global paused
     if is_allowed(update):
         paused = True
-        await update.message.reply_text("⏸ Paused")
+        await update.message.reply_text("Paused")
 
 async def resume(update, context):
     global paused
     if is_allowed(update):
         paused = False
-        await update.message.reply_text("▶️ Resumed")
+        await update.message.reply_text("Resumed")
         await play_next(update, context)
 
 async def stop(update, context):
@@ -179,7 +183,7 @@ async def stop(update, context):
         queue.clear()
         paused = False
         playing = False
-        await update.message.reply_text("⏹ Stopped")
+        await update.message.reply_text("Stopped")
 
 # ================= MAIN =================
 
@@ -193,5 +197,5 @@ app.add_handler(CommandHandler("pause", pause))
 app.add_handler(CommandHandler("resume", resume))
 app.add_handler(CommandHandler("stop", stop))
 
-print("🚀 Bot started successfully")
+print("Bot started successfully")
 app.run_polling()
