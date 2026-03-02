@@ -1,4 +1,5 @@
 import os
+import asyncio
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
@@ -10,11 +11,6 @@ if not TOKEN:
 
 HER_SONGS_DIR = "her_songs"
 os.makedirs(HER_SONGS_DIR, exist_ok=True)
-
-# ================= HELPERS =================
-
-def is_allowed(update: Update):
-    return True  # allow everyone (you can restrict later)
 
 # ================= COMMANDS =================
 
@@ -28,7 +24,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ---------- LIST SONGS ----------
 
-async def hersongs(update, context):
+async def hersongs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     songs = sorted(os.listdir(HER_SONGS_DIR))
     songs = [s for s in songs if s.lower().endswith((".mp3", ".wav", ".m4a"))]
 
@@ -44,7 +40,7 @@ async def hersongs(update, context):
 
 # ---------- PLAY SINGLE SONG ----------
 
-async def playher(update, context):
+async def playher(update: Update, context: ContextTypes.DEFAULT_TYPE):
     songs = sorted(os.listdir(HER_SONGS_DIR))
     songs = [s for s in songs if s.lower().endswith((".mp3", ".wav", ".m4a"))]
 
@@ -75,7 +71,7 @@ async def playher(update, context):
     except Exception as e:
         await update.message.reply_text(f"Error sending file: {e}")
 
-# ---------- PLAY ALL SONGS (SAFE VERSION) ----------
+# ---------- PLAY ALL SONGS (ONE BY ONE) ----------
 
 async def playallher(update: Update, context: ContextTypes.DEFAULT_TYPE):
     songs = sorted(os.listdir(HER_SONGS_DIR))
@@ -100,8 +96,9 @@ async def playallher(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     title=song.rsplit(".", 1)[0],
                     performer="Her Songs"
                 )
+            await asyncio.sleep(1)  # prevent flood limit
         except Exception as e:
-            await update.message.reply_text(f"Skipped {song} (Error: {e})")
+            await update.message.reply_text(f"Skipped {song}: {e}")
 
 # ================= MAIN =================
 
